@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="videoForm">
+        <label for="videoFile">Video File:</label><br>
+        <input type="file" id="videoFile" name="videoFile"><br>
+        <input type="submit" value="Submit">
+    </form>
+    <div id="response"></div>
+    <script>
+        document.getElementById('videoForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        var fileInput = document.getElementById('videoFile');
+        var file = fileInput.files[0];
+        var formData = new FormData();
+        formData.append('video', file);
+
+        fetch('/api/reality_video', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            // Display the server's response
+            document.getElementById('response').innerText = data;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+        });
+    </script>
+</body>
+</html>
