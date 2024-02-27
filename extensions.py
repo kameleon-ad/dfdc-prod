@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Tuple
 
@@ -47,7 +49,7 @@ class VideoRealFakeDetector(GlobalInstanceAbstract):
         self.__image_face_extractor = ImageFaceExtractor()
 
     @monitor_execution_time()
-    def __call__(self, video_path: str | Path, boolean: bool = False, boolean_threshold: float = 0.3, ret_faces=False, offset=2.0):
+    def __call__(self, video_path: str | Path, boolean: bool = True, boolean_threshold: float = 0.5, ret_faces=False, offset=0.0):
         cap = cv2.VideoCapture(video_path)
         frame_cnt = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         frame_idxs = np.unique(np.linspace(0, frame_cnt - 1, self.NB_FRAMES, endpoint=True, dtype=np.int32))
