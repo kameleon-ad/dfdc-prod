@@ -19,12 +19,15 @@ def api_reality_video():
     if video_file is None:
         return jsonify({'status': 'Invalid Request'}), 400
 
+    print('[*] Analysing', video_file.name)
+
     upload_path = Path('uploads')
     upload_path.mkdir(exist_ok=True, parents=True)
 
     filepath = upload_path / f'{time.time()}-{video_file.filename}'
     video_file.save(filepath)
 
-    result = DETECTOR(str(filepath)).item()
+    result = DETECTOR(str(filepath), boolean=False).item()
+    print(result)
 
     return jsonify({'result': result})
