@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from pathlib import Path
 from typing import Tuple
 
@@ -26,9 +25,27 @@ class ImageFaceExtractor(GlobalInstanceAbstract):
         self.__face_detector.setInput(image)
         confidences, boxes = self.__face_detector.forward(self.__outputs)
         bboxes, _, _ = predict(org_image.shape[1], org_image.shape[0], confidences, boxes, threshold)
-        if len(bboxes):
-            return bboxes[0]
-        return None
+        if len(bboxes) == 0:
+            return None
+        return self._crop_face_from_bbox(org_image, bboxes[0])
+
+    def _crop_face_from_bbox(self, image: np.ndarray, bbox: np.ndarray):
+        bbox = self._add_margin_to_detection(bbox, image.shape)
+        ymin, xmin, ymax, xmax = bbox
+        face = image[xmin:xmax, ymin:ymax, :]
+        return face
+
+    def _add_margin_to_detection(self, bbox: np.ndarray, frame_size: Tuple[int, int], margin: float=0.2):
+        offset = np.round(margin * (bbox[2] - bbox[0]))
+        size = int(bbox[2] - bbox[0] + offset * 4)
+        center = (bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2
+        half_size = size // 2
+        bbox = bbox.copy()
+        bbox[0] = max(center[0] - half_size, 0)
+        bbox[1] = max(center[1] - half_size, 0)
+        bbox[2] = min(center[0] + half_size, frame_size[1])
+        bbox[3] = min(center[1] + half_size, frame_size[0])
+        return bbox
 
     def _preprocess(self, org_image: np.ndarray):
         image = cv2.cvtColor(org_image, cv2.COLOR_BGR2RGB)
@@ -41,16 +58,13 @@ class ImageFaceExtractor(GlobalInstanceAbstract):
         return image
 
 
-class VideoRealFakeDetector(GlobalInstanceAbstract):
+class VideoFaceExtractor(GlobalInstanceAbstract):
     NB_FRAMES = 32
 
     def __init__(self):
-        super().__init__()
-        self.__real_fake_detector = cv2.dnn.readNetFromONNX('./models/dfdc.onnx')
         self.__image_face_extractor = ImageFaceExtractor()
 
-    @monitor_execution_time()
-    def __call__(self, video_path: str | Path, boolean: bool = True, boolean_threshold: float = 0.5, ret_faces=False, offset=0.2):
+    def __call__(self, video_path: str | Path):
         cap = cv2.VideoCapture(video_path)
         frames = []
         while True:
@@ -63,16 +77,29 @@ class VideoRealFakeDetector(GlobalInstanceAbstract):
 
         faces = []
         for frame in frames:
-            bbox = self.__image_face_extractor(frame)
-            if bbox is None:
+            face = self.__image_face_extractor(frame)
+            if face is None:
                 continue
-            faces.append(
-                self._preprocess_faces(
-                    self._crop_face_from_bbox(frame, bbox)
-                )
-            )
+            faces.append(face)
+        return faces
 
-        faces = np.array(faces)
+
+class VideoRealFakeDetector(GlobalInstanceAbstract):
+    NB_FRAMES = 32
+
+    def __init__(self):
+        super().__init__()
+        self.__real_fake_detector = cv2.dnn.readNetFromONNX('./models/dfdc.onnx')
+        self.__video_face_extractor = VideoFaceExtractor()
+
+    @monitor_execution_time()
+    def __call__(self, video_path: str | Path, boolean: bool = True, boolean_threshold: float = 0.5, ret_faces=False, offset=0.2):
+        faces = self.__video_face_extractor(video_path)
+
+        faces = np.array([
+            self._preprocess_faces(face)
+            for face in faces
+        ])
         self.__real_fake_detector.setInput(faces)
         faces_pred = self.__real_fake_detector.forward()
 
@@ -84,18 +111,6 @@ class VideoRealFakeDetector(GlobalInstanceAbstract):
             return avg_score > boolean_threshold if boolean else avg_score, list(zip(faces, faces_pred))
         return avg_score > boolean_threshold if boolean else avg_score
 
-    def _add_margin_to_detection(self, bbox: np.ndarray, frame_size: Tuple[int, int], margin: float=0.2):
-        offset = np.round(margin * (bbox[2] - bbox[0]))
-        size = int(bbox[2] - bbox[0] + offset * 4)
-        center = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
-        half_size = size // 2
-        bbox = bbox.copy()
-        bbox[0] = max(center[0] - half_size, 0)
-        bbox[1] = max(center[1] - half_size, 0)
-        bbox[2] = min(center[0] + half_size, frame_size[1])
-        bbox[3] = min(center[1] + half_size, frame_size[0])
-        return bbox
-
     def _preprocess_faces(self, face_img, target_size=(224, 224)):
         face_img = cv2.resize(face_img, target_size).astype(np.float32) / 255
         image_mean = np.array([0.485, 0.456, 0.406])
@@ -104,12 +119,6 @@ class VideoRealFakeDetector(GlobalInstanceAbstract):
         face_img = np.transpose(face_img, [2, 0, 1])
         face_img = face_img.astype(np.float32)
         return face_img
-
-    def _crop_face_from_bbox(self, image: np.ndarray, bbox: np.ndarray):
-        bbox = self._add_margin_to_detection(bbox, image.shape)
-        ymin, xmin, ymax, xmax = bbox
-        face = image[xmin:xmax, ymin:ymax, :]
-        return face
 
     def _read_frames_at_indices(self, capture: cv2.VideoCapture, frame_idxs):
         frames = []
