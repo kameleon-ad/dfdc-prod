@@ -100,6 +100,10 @@ class VideoRealFakeDetector(GlobalInstanceAbstract):
             self._preprocess_faces(face)
             for face in faces
         ])
+
+        if len(faces) == 0:
+            return None
+
         self.__real_fake_detector.setInput(faces)
         faces_pred = self.__real_fake_detector.forward()
 
