@@ -18,7 +18,7 @@ def main(args):
     video_dir: Path = args.video_dir
     true_cnt, false_cnt = 0, 0
 
-    for video_path in tqdm(sorted(video_dir.rglob("*.mp4"))):
+    for video_path in tqdm(sorted(video_dir.rglob("*.webm"))):
         result = VideoRealFakeDetector()(str(video_path))
         if result:
             true_cnt += 1

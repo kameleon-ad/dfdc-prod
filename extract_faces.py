@@ -5,12 +5,12 @@ import glob
 from extensions import VideoFaceExtractor
 
 #input webm files directory
-input_dir = "D:\\mp4"
+input_dir = "C:\\Users\\paperspace\\Documents\\adelos\\AsDeepFake"
 
 #output mp4 files directory
-output_dir = "D:\\jpg"
+output_dir = "C:\\Users\\paperspace\\Documents\\adelos\\dataset\\real-fails-jpg"
 
-mp4_files = glob.glob(os.path.join(input_dir, "*.mp4"))
+mp4_files = glob.glob(os.path.join(input_dir, "*.webm"))
 
 vfe = VideoFaceExtractor()
 

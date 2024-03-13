@@ -3,10 +3,10 @@ import cv2
 import glob
 
 #input webm files directory
-input_dir = "D:\\webm"
+input_dir = "C:\\Users\\paperspace\\Documents\\adelos\\dataset\\real-webm"
 
 #output mp4 files directory
-output_dir = "D:\\mp4"
+output_dir = "C:\\Users\\paperspace\\Documents\\adelos\\dataset\\real-mp4"
 
 webm_files = glob.glob(os.path.join(input_dir, "*.webm"))
 

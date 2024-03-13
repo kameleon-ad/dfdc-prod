@@ -66,16 +66,25 @@ class VideoFaceExtractor(GlobalInstanceAbstract):
 
     def __call__(self, video_path: str | Path):
         cap = cv2.VideoCapture(video_path)
-        frames = []
-        while True:
-            flg, frame = cap.read()
-            if not flg:
-                break
-            frames.append(frame)
-        frame_idxs = np.unique(np.linspace(0, len(frames) - 1, self.NB_FRAMES, endpoint=True, dtype=np.int32))
-        frames = np.array(frames)[frame_idxs]
-
         faces = []
+        frames = []
+        frame_cnt = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if frame_cnt <= 0:
+            while True:
+                flg, frame = cap.read()
+                if not flg:
+                    break
+                frames.append(frame)
+            frame_idxs = np.unique(np.linspace(0, len(frames) - 1, self.NB_FRAMES, endpoint=True, dtype=np.int32))
+            frames = np.array(frames)[frame_idxs]
+        else:
+            frame_idxs = np.unique(np.linspace(0, len(frames) - 1, self.NB_FRAMES, endpoint=True, dtype=np.int32))
+            for frame_idx in frame_idxs:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                if ret:
+                    frames.append(frame)
+
         for frame in frames:
             face = self.__image_face_extractor(frame)
             if face is None:
